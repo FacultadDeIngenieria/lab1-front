@@ -1,11 +1,4 @@
-// src/components/UserList.tsx
-import React from 'react';
-
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
+import type { User } from '../types';
 
 interface UserListProps {
     users: User[];
@@ -13,35 +6,42 @@ interface UserListProps {
     onDelete: (id: number) => void;
 }
 
-const UserList: React.FC<UserListProps> = ({ users, onEdit, onDelete }) => {
+function UserList({ users, onEdit, onDelete }: UserListProps) {
+    if (users.length === 0) {
+        return <p className="status-message">No users yet. Add one to get started!</p>;
+    }
+
     return (
-        <div>
-            <h2>User List</h2>
+        <div className="user-list">
             <table>
                 <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Actions</th>
-                </tr>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
                 </thead>
                 <tbody>
-                {users.map((user) => (
-                    <tr key={user.id}>
-                        <td>{user.id}</td>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>
-                            <button onClick={() => onEdit(user)}>Edit</button>
-                            <button onClick={() => onDelete(user.id)}>Delete</button>
-                        </td>
-                    </tr>
-                ))}
+                    {users.map((user) => (
+                        <tr key={user.id}>
+                            <td>{user.id}</td>
+                            <td>{user.name}</td>
+                            <td>{user.email}</td>
+                            <td className="actions-cell">
+                                <button className="btn btn-secondary" onClick={() => onEdit(user)}>
+                                    Edit
+                                </button>
+                                <button className="btn btn-danger" onClick={() => onDelete(user.id)}>
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
         </div>
     );
-};
+}
 
 export default UserList;

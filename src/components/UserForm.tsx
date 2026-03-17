@@ -1,57 +1,63 @@
-import React, { useState, useEffect } from 'react';
-
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
+import { useActionState } from 'react';
+import type { User } from '../types';
 
 interface UserFormProps {
     user: User | null;
-    onSave: (user: User) => void;
+    onSave: (user: User) => Promise<void>;
     onCancel: () => void;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
-    const [name, setName] = useState(user?.name || '');
-    const [email, setEmail] = useState(user?.email || '');
-
-    useEffect(() => {
-        setName(user?.name || '');
-        setEmail(user?.email || '');
-    }, [user]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ id: user?.id ?? Math.random() * 1000, name, email });
-    };
+function UserForm({ user, onSave, onCancel }: UserFormProps) {
+    const [error, formAction, isPending] = useActionState(
+        async (_prev: string | null, formData: FormData) => {
+            const name = formData.get('name') as string;
+            const email = formData.get('email') as string;
+            try {
+                await onSave({ id: user?.id ?? 0, name, email });
+                return null;
+            } catch (e) {
+                return e instanceof Error ? e.message : 'Failed to save user';
+            }
+        },
+        null
+    );
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div>
-                <label htmlFor="name">Name:</label>
+        <form className="user-form" action={formAction}>
+            <h2>{user ? 'Edit User' : 'Add User'}</h2>
+            {error && <p className="form-error">{error}</p>}
+            <div className="form-field">
+                <label htmlFor="name">Name</label>
                 <input
                     type="text"
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    name="name"
+                    defaultValue={user?.name ?? ''}
+                    placeholder="Full name"
                     required
                 />
             </div>
-            <div>
-                <label htmlFor="email">Email:</label>
+            <div className="form-field">
+                <label htmlFor="email">Email</label>
                 <input
                     type="email"
                     id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    name="email"
+                    defaultValue={user?.email ?? ''}
+                    placeholder="email@example.com"
                     required
                 />
             </div>
-            <button type="submit">Save</button>
-            <button type="button" onClick={onCancel}>Cancel</button>
+            <div className="form-actions">
+                <button type="submit" className="btn btn-primary" disabled={isPending}>
+                    {isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isPending}>
+                    Cancel
+                </button>
+            </div>
         </form>
     );
-};
+}
 
 export default UserForm;

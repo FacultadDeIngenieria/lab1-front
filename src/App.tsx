@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
+import { useState, useOptimistic, startTransition } from 'react';
 import UserList from './components/UserList';
 import UserForm from './components/UserForm';
+import { useUsers } from './hooks/useUsers';
+import type { User } from './types';
 import './App.css';
 
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
-
 function App() {
-    const [users, setUsers] = useState<User[]>([
-        { id: 1, name: 'John Doe', email: 'john.doe@example.com' },
-        { id: 2, name: 'Jane Smith', email: 'jane.smith@example.com' },
-    ]);
+    const { users, loading, error, addUser, editUser, removeUser } = useUsers();
+    const [optimisticUsers, applyOptimisticDelete] = useOptimistic(
+        users,
+        (state, deletedId: number) => state.filter(u => u.id !== deletedId)
+    );
+
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [showForm, setShowForm] = useState(false);
 
-    const handleAddUser = () => {
+    const handleSaveUser = async (user: User) => {
+        setShowForm(false);
         setEditingUser(null);
-        setShowForm(true);
+        if (user.id) {
+            await editUser(user);
+        } else {
+            await addUser({ name: user.name, email: user.email });
+        }
+    };
+
+    const handleDeleteUser = (id: number) => {
+        startTransition(async () => {
+            applyOptimisticDelete(id);
+            await removeUser(id);
+        });
     };
 
     const handleEditUser = (user: User) => {
@@ -27,19 +37,9 @@ function App() {
         setShowForm(true);
     };
 
-    const handleDeleteUser = (id: number) => {
-        setUsers(users.filter((user) => user.id !== id));
-    };
-
-    const handleSaveUser = (user: User) => {
-        if (user.id) {
-            setUsers(users.map((u) => (u.id === user.id ? user : u)));
-        } else {
-            const newId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1
-            setUsers([...users, { ...user, id: newId }]);
-        }
-        setShowForm(false);
+    const handleAddUser = () => {
         setEditingUser(null);
+        setShowForm(true);
     };
 
     const handleCancel = () => {
@@ -48,18 +48,35 @@ function App() {
     };
 
     return (
-        <div className="App">
-            <header className="App-header">
-                <button onClick={handleAddUser}>Add User</button>
+        <div className="app">
+            <header className="app-header">
+                <h1>User Management</h1>
+            </header>
+            <main className="app-main">
+                {error && <div className="error-banner">{error}</div>}
+                <div className="toolbar">
+                    <button className="btn btn-primary" onClick={handleAddUser}>
+                        + Add User
+                    </button>
+                </div>
                 {showForm && (
                     <UserForm
+                        key={editingUser?.id ?? 'new'}
                         user={editingUser}
                         onSave={handleSaveUser}
                         onCancel={handleCancel}
                     />
                 )}
-                <UserList users={users} onEdit={handleEditUser} onDelete={handleDeleteUser} />
-            </header>
+                {loading ? (
+                    <p className="status-message">Loading users...</p>
+                ) : (
+                    <UserList
+                        users={optimisticUsers}
+                        onEdit={handleEditUser}
+                        onDelete={handleDeleteUser}
+                    />
+                )}
+            </main>
         </div>
     );
 }
